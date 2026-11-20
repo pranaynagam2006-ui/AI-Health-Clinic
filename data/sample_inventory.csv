@@ -1,0 +1,7 @@
+sku,product_name,category,stock_level,daily_usage,lead_time_days,unit_cost,supplier_name,supplier_email,minimum_order_quantity,reorder_point,clinic_id,clinic_name,city,region,bed_count,vendor_rating,vendor_support_contact
+GLV-NIT-M,nitrile gloves medium,PPE,38,12,4,0.08,Northstar Medical Supply,orders@northstarmed.example,100,,CLINIC-001,Northside Community Clinic,Seattle,North,50,4.7,orders@northstarmed.example
+MASK-SURG,surgical masks,PPE,240,30,3,0.05,Northstar Medical Supply,orders@northstarmed.example,50,,CLINIC-002,Downtown Family Clinic,Seattle,Central,32,4.7,orders@northstarmed.example
+SYR-10ML,10 ml syringes,Diagnostics,18,5,8,0.22,Precision Health Goods,sales@precisionhealth.example,25,,CLINIC-002,Downtown Family Clinic,Seattle,Central,32,4.4,sales@precisionhealth.example
+GAUZE-4X4,sterile gauze pads 4x4,Surgical,65,8,6,0.12,Precision Health Goods,sales@precisionhealth.example,40,,CLINIC-001,Northside Community Clinic,Seattle,North,50,4.4,sales@precisionhealth.example
+SAN-500,hand sanitizer 500 ml,Infection Control,9,2,12,3.40,Evergreen Clinic Products,service@evergreen.example,12,,CLINIC-003,Lakeshore Diagnostic Clinic,Bellevue,East,24,4.9,service@evergreen.example
+TAPE-MED,medical tape rolls,Surgical,42,3,5,1.15,Evergreen Clinic Products,service@evergreen.example,10,,CLINIC-003,Lakeshore Diagnostic Clinic,Bellevue,East,24,4.9,service@evergreen.example
