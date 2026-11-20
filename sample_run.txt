@@ -1,0 +1,48 @@
+Example request (with inventory seeded and the policy folder indexed):
+
+User: "Please create a draft order for 20 units of SYR-10ML for Downtown Family Clinic."
+
+Planner Agent decision:
+  action: tool_call
+  tool: create_draft_purchase_order
+  validated arguments: {"sku": "SYR-10ML", "quantity": 20, "clinic_id": "CLINIC-002"}
+
+Inventory Agent:
+  destination: Downtown Family Clinic (CLINIC-002)
+  vendor: Precision Health Goods
+  requested quantity: 20
+  supplier minimum order quantity: 25
+  deterministic draft quantity: 25
+  unit cost: $0.22
+  draft total: $5.50
+
+Approval Guardrail Agent:
+  threshold: $0.00
+  result: approval required; persisted as pending
+  interrupt: {"type":"purchase_order_approval","order_id":"PO-<generated-id>","total":5.5,
+              "message":"Approve this supplier purchase order? Respond YES or NO."}
+
+Example `GET /logs?thread_id=<thread-id>` entries (IDs/timestamps abbreviated):
+  planner / policy_retrieval: {"documents_found": 1}
+  planner / tool_arguments_validated: {"tool":"create_draft_purchase_order","schema":"CreateDraftPurchaseOrderInput","valid":true}
+  planner / decision: {"action":"tool_call","tool_call":{"name":"create_draft_purchase_order",
+                      "arguments":{"sku":"SYR-10ML","quantity":20,"clinic_id":"CLINIC-002"}},
+                      "duration_ms":182.4,"planning_mode":"llm"}
+  tool_guardrail / tool_arguments_validated: {"tool":"create_draft_purchase_order",
+                      "schema":"CreateDraftPurchaseOrderInput","valid":true}
+  inventory / tool_call: {"tool":"create_draft_purchase_order","arguments":{"sku":"SYR-10ML",
+                     "quantity":20,"clinic_id":"CLINIC-002"},
+                     "result":{"requested_quantity":20,"quantity":25,
+                     "minimum_order_quantity":25,"total_cost":5.5,"status":"draft"},
+                     "argument_validation":"passed","duration_ms":2.1}
+  approval_guardrail / approval_requested: {"order_id":"PO-<generated-id>","total":5.5,"threshold":0}
+
+Security simulator example:
+  POST /api/security/simulate {"operation":"DELETE","table":"inventory"}
+  response: 403 destructive_operation_blocked
+  trace: tool_guardrail / destructive_operation_blocked {"blocked":true,"executed":false}
+
+The API/UI presents the pending order. Posting
+{"decision":"YES","thread_id":"<thread-id>"} to `/approvals/PO-<generated-id>` resumes the same
+LangGraph thread, updates the order to `approved`, and adds an `approval_decision` trace entry.
+Posting `NO` changes the order to `rejected`. No supplier receives an order.
