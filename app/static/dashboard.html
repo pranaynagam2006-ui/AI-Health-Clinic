@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>AI DataAssist — HealthPulse Clinical Operations</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172a3a;
+        --muted: #657587;
+        --line: #e2e8ed;
+        --paper: #ffffff;
+        --canvas: #f3f6f7;
+        --teal: #087e79;
+        --teal-light: #e3f4f1;
+        --amber: #9a5c00;
+        --amber-light: #fff3d8;
+        --red: #a33b38;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: var(--canvas); }
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      .shell { max-width: 1440px; margin: auto; padding: 26px clamp(16px, 4vw, 56px) 48px; }
+      .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 30px; }
+      .brand { display: flex; align-items: center; gap: 12px; font-size: 15px; font-weight: 750; letter-spacing: .01em; }
+      .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--teal); color: white; font-size: 20px; }
+      .badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #b9ded5; border-radius: 999px; padding: 8px 12px; background: var(--teal-light); color: #17645c; font-size: 12px; font-weight: 700; }
+      .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #198a6d; }
+      .intro { margin-bottom: 22px; }
+      h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 38px); letter-spacing: -.035em; }
+      h2 { margin: 0; font-size: 17px; }
+      .subtle { color: var(--muted); line-height: 1.55; }
+      .card { border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 3px 14px #18354808; }
+      .query-card { padding: clamp(16px, 3vw, 26px); }
+      .query-row { display: flex; gap: 10px; }
+      .query-row input { min-width: 0; flex: 1; border: 1px solid #cad5dc; border-radius: 10px; padding: 13px 15px; color: var(--ink); outline: none; }
+      .query-row input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px #087e791c; }
+      .primary, .secondary, .danger { border: 0; border-radius: 10px; padding: 11px 16px; font-weight: 700; }
+      .primary { color: white; background: var(--teal); }
+      .primary:hover { background: #066c67; }
+      .secondary { color: var(--teal); background: var(--teal-light); }
+      .danger { color: var(--red); background: #fae9e7; }
+      button:disabled { opacity: .6; cursor: wait; }
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      .chip { border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; background: #fff; color: #425568; font-size: 12px; }
+      .chip:hover { border-color: #9bc9c1; color: var(--teal); }
+      .feedback { min-height: 24px; margin-top: 12px; color: var(--muted); font-size: 13px; }
+      .feedback.error { color: var(--red); }
+      .assistant-answer { margin-top: 16px; padding: 14px 16px; border-left: 4px solid var(--teal); border-radius: 9px; background: #f1f9f7; }
+      .assistant-answer-title { color: #17645c; font-size: 12px; font-weight: 800; }
+      .assistant-answer-text { margin: 5px 0 0; color: #294253; font-size: 14px; line-height: 1.55; }
+      .status-card { padding: 20px 22px; margin: 18px 0; }
+      .status-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 17px; }
+      .safe-note { color: var(--muted); font-size: 12px; text-align: right; }
+      .stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+      .stage { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 8px 10px; border-radius: 9px; background: #f2f5f6; color: #70808c; font-size: 12px; }
+      .stage-dot { display: grid; flex: 0 0 20px; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #dce4e8; font-size: 11px; font-weight: 800; }
+      .stage.complete { background: var(--teal-light); color: #17645c; }
+      .stage.complete .stage-dot { background: var(--teal); color: white; }
+      .stage.active { outline: 1px solid #d6a542; background: var(--amber-light); color: var(--amber); }
+      .stage.active .stage-dot { background: #d59120; color: white; }
+      .stage.alert { background: var(--amber-light); color: var(--amber); }
+      .stage.alert .stage-dot { background: #d59120; color: white; }
+      .agent-activity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 15px; }
+      .agent-card { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfc; }
+      .agent-card.active { border-color: #e4c174; background: #fffcf5; }
+      .agent-card.done { border-color: #b9ded5; background: #f3fbf9; }
+      .agent-name { font-size: 12px; font-weight: 800; }
+      .agent-status { margin-top: 5px; color: var(--teal); font-size: 11px; font-weight: 750; }
+      .agent-action { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+      .agent-duration { margin-top: 5px; color: #788793; font-size: 10px; }
+      .grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .85fr); gap: 18px; align-items: start; }
+      .panel { padding: 20px; }
+      .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 15px; }
+      .summary { margin: 0 0 16px; color: #435568; font-size: 14px; line-height: 1.55; }
+      .chart { display: grid; gap: 10px; padding: 14px; margin-bottom: 16px; border-radius: 12px; background: #f7f9fa; }
+      .bar-row { display: grid; grid-template-columns: minmax(92px, 1fr) 3fr 38px; align-items: center; gap: 10px; font-size: 12px; }
+      .bar-label { overflow: hidden; color: #506174; text-overflow: ellipsis; white-space: nowrap; }
+      .bar-track { height: 9px; overflow: hidden; border-radius: 99px; background: #e4ebee; }
+      .bar-fill { height: 100%; border-radius: inherit; background: #36a397; }
+      .bar-fill.low { background: #e2a43d; }
+      .bar-value { color: var(--muted); text-align: right; }
+      .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 11px; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+      th, td { padding: 10px 11px; border-bottom: 1px solid #edf0f2; text-align: left; }
+      th { background: #f7f9fa; color: #596c7a; font-weight: 700; }
+      .sort-button { padding: 0; border: 0; color: inherit; background: transparent; font-size: inherit; font-weight: inherit; }
+      .sort-button:hover { color: var(--teal); }
+      tr:last-child td { border-bottom: 0; }
+      .stock-low { color: var(--amber); font-weight: 800; }
+      .approval-list { display: grid; gap: 10px; }
+      .approval { padding: 13px; border: 1px solid #f0dfb8; border-radius: 12px; background: #fffcf5; }
+      .approval-title { margin-bottom: 5px; font-size: 13px; font-weight: 750; }
+      .approval-meta { margin-bottom: 11px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+      .approval-actions { display: flex; gap: 8px; }
+      .approval-actions button { flex: 1; padding: 8px; font-size: 12px; }
+      .approval-heading { display: flex; align-items: center; gap: 8px; }
+      .approval-count { display: inline-flex; min-width: 24px; height: 24px; align-items: center; justify-content: center; padding: 0 8px; border-radius: 99px; background: #fff2d6; color: #885300; font-size: 11px; font-weight: 800; }
+      .approval-count.clear { background: #e8f5f1; color: #17645c; }
+      .approval-note { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0; padding: 11px 12px; border: 1px solid #e4efec; border-radius: 10px; background: #f5faf8; color: #526a6a; font-size: 11px; line-height: 1.45; }
+      .approval-note-icon { flex: 0 0 auto; color: var(--teal); font-weight: 900; }
+      .approval-list { gap: 12px; }
+      .approval-card { padding: 15px; border: 1px solid #e7ecef; border-left: 3px solid #e7ac4a; border-radius: 13px; background: #fff; box-shadow: 0 3px 12px #203b4d08; }
+      .approval-card.processing { border-left-color: var(--teal); background: #fbfefd; }
+      .approval-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+      .approval-item { min-width: 0; color: var(--ink); font-size: 14px; font-weight: 750; line-height: 1.4; overflow-wrap: anywhere; }
+      .approval-id { margin-top: 3px; color: #84919b; font-size: 10px; letter-spacing: .03em; }
+      .approval-state { flex: 0 0 auto; padding: 5px 8px; border-radius: 99px; background: #fff4dc; color: #8a5a08; font-size: 10px; font-weight: 800; }
+      .approval-total { margin: 14px 0 12px; color: var(--ink); font-size: 22px; font-weight: 800; letter-spacing: -.03em; }
+      .approval-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 11px 0; border-top: 1px solid #eff2f4; border-bottom: 1px solid #eff2f4; }
+      .approval-detail-label { color: #84919b; font-size: 10px; }
+      .approval-detail-value { margin-top: 3px; color: #435568; font-size: 11px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+      .approval-actions { display: grid; grid-template-columns: 1.15fr 1fr; gap: 8px; margin-top: 12px; }
+      .approval-actions button { min-height: 39px; border-radius: 9px; font-size: 11px; transition: background .15s ease, transform .15s ease; }
+      .approval-actions button:not(:disabled):hover { transform: translateY(-1px); }
+      .approval-approve { border: 0; background: var(--teal); color: #fff; font-weight: 750; }
+      .approval-approve:not(:disabled):hover { background: #066c67; }
+      .approval-reject { border: 1px solid #e8dada; background: #fff; color: #8e4a47; font-weight: 700; }
+      .approval-reject:not(:disabled):hover { border-color: #d3a5a1; background: #fff8f7; }
+      .approval-action-status { min-height: 16px; margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+      .approval-empty { padding: 24px 16px; border: 1px dashed #cbded8; border-radius: 13px; background: #f7fbf9; text-align: center; }
+      .approval-empty-icon { display: grid; width: 36px; height: 36px; place-items: center; margin: 0 auto 9px; border-radius: 50%; background: #e2f2ed; color: #187b69; font-size: 17px; font-weight: 800; }
+      .approval-empty-title { color: #284b47; font-size: 13px; font-weight: 750; }
+      .approval-empty-copy { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+      .empty { color: var(--muted); font-size: 13px; }
+      details { margin-top: 18px; }
+      summary { cursor: pointer; color: #425568; font-size: 13px; font-weight: 700; }
+      pre { overflow: auto; padding: 12px; border-radius: 9px; background: #f2f5f6; color: #435568; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
+      .trace { display: grid; gap: 8px; max-height: 270px; overflow: auto; margin-top: 10px; }
+      .trace-row { padding: 10px; border: 1px solid var(--line); border-radius: 9px; font-size: 11px; }
+      .trace-row strong { display: block; margin-bottom: 5px; }
+      .footer { margin-top: 22px; color: var(--muted); font-size: 12px; text-align: center; }
+      @media (max-width: 850px) {
+        .grid { grid-template-columns: 1fr; }
+        .agent-activity { grid-template-columns: 1fr; }
+        .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 520px) {
+        .topbar { align-items: flex-start; flex-direction: column; }
+        .query-row { flex-direction: column; }
+        .query-row .primary { width: 100%; }
+        .stages { grid-template-columns: 1fr 1fr; }
+        .stage { align-items: flex-start; flex-direction: column; }
+        .safe-note { max-width: 45%; }
+        .approval-details { grid-template-columns: 1fr; }
+        .approval-actions { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">+</span> AI DataAssist — HealthPulse Clinical Operations</div>
+        <div class="badge" title="All tool arguments are schema-validated. The model cannot issue SQL.">
+          Validated tools · no raw SQL
+        </div>
+      </header>
+
+      <section class="intro">
+        <h1>Inventory &amp; purchasing</h1>
+        <div class="subtle">A shared supply view for clinics, vendors, and approval-gated purchase orders.</div>
+      </section>
+
+      <section class="card query-card" aria-label="Inventory assistant">
+        <form id="query-form" class="query-row">
+          <input id="query-input" name="query" maxlength="4000" autocomplete="off"
+            placeholder="Ask about stock, suppliers, or request a purchase-order draft…" aria-label="Ask the inventory agent">
+          <button id="query-button" class="primary" type="submit">Run query</button>
+        </form>
+        <div class="chips" aria-label="Example queries">
+          <button class="chip" type="button" data-query="Show low-stock supplies">Low-stock supplies</button>
+          <button class="chip" type="button" data-query="Show PPE supplies across clinics">PPE across clinics</button>
+          <button class="chip" type="button" data-query="Show supplier lead times and minimum order quantities">Supplier terms</button>
+          <button class="chip" type="button" data-query="Show pending purchase orders by vendor">Pending purchase orders by vendor</button>
+          <button class="chip" type="button" data-query="Show supplies at clinic CLINIC-003">Lakeshore clinic stock</button>
+        </div>
+        <div class="assistant-answer" role="status" aria-live="polite">
+          <div class="assistant-answer-title">Assistant response</div>
+          <p id="assistant-answer-text" class="assistant-answer-text">Your answer will appear here after you run a query.</p>
+        </div>
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="card status-card" aria-label="Execution and safety status">
+        <div class="status-heading">
+          <div>
+            <h2>Execution &amp; safety</h2>
+            <div id="status-message" class="subtle" style="font-size:12px;margin-top:5px">Ready for inventory queries.</div>
+          </div>
+          <div class="safe-note">No raw SQL<br>Order writes via validated tools only</div>
+        </div>
+        <div class="stages">
+          <div class="stage" data-stage="0"><span class="stage-dot">1</span><span>Planning</span></div>
+          <div class="stage" data-stage="1"><span class="stage-dot">2</span><span>Checking inventory</span></div>
+          <div class="stage" data-stage="2"><span class="stage-dot">3</span><span>Draft purchase order</span></div>
+          <div class="stage" data-stage="3"><span class="stage-dot">4</span><span>Verified / approval</span></div>
+        </div>
+        <div class="agent-activity" aria-label="Multi-agent actions">
+          <article id="agent-planner" class="agent-card">
+            <div class="agent-name">Planner Agent</div>
+            <div class="agent-status">Waiting</div>
+            <div class="agent-action">Classifies the request, checks policy when needed, and selects a validated tool.</div>
+            <div class="agent-duration"></div>
+          </article>
+          <article id="agent-inventory" class="agent-card">
+            <div class="agent-name">Inventory Agent</div>
+            <div class="agent-status">Waiting</div>
+            <div class="agent-action">Validates tool arguments and queries inventory, vendors, or purchase orders.</div>
+            <div class="agent-duration"></div>
+          </article>
+          <article id="agent-approval_guardrail" class="agent-card">
+            <div class="agent-name">Approval Guardrail Agent</div>
+            <div class="agent-status">Not needed</div>
+            <div class="agent-action">Runs for draft orders; pauses above the configured approval threshold.</div>
+            <div class="agent-duration"></div>
+          </article>
+        </div>
+      </section>
+
+      <div class="grid">
+        <section class="card panel">
+          <div class="panel-head">
+            <div><h2>Clinic inventory</h2><div class="subtle" style="font-size:12px;margin-top:4px">Agent results and reorder status</div></div>
+            <button id="refresh-button" class="secondary" type="button">Refresh</button>
+          </div>
+          <p id="executive-summary" class="summary">Loading clinic inventory…</p>
+          <div id="inventory-chart" class="chart" aria-label="Inventory by clinic"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr id="inventory-head"></tr></thead>
+              <tbody id="inventory-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="card panel">
+          <div class="panel-head">
+            <div>
+              <div class="approval-heading"><h2>Pending approvals</h2><span id="approval-count" class="approval-count clear" aria-label="0 pending approvals">0</span></div>
+              <div class="subtle" style="font-size:12px;margin-top:4px">Review each draft and record an explicit decision.</div>
+            </div>
+            <button id="refresh-approvals" class="secondary" type="button" aria-label="Refresh pending approvals">Refresh</button>
+          </div>
+          <div class="approval-note"><span class="approval-note-icon" aria-hidden="true">i</span><span>Orders stay as drafts until approved. Nothing is sent to a supplier from this screen.</span></div>
+          <div id="approval-list" class="approval-list"><div class="approval-empty"><div class="approval-empty-icon" aria-hidden="true">…</div><div class="approval-empty-title">Checking approvals</div></div></div>
+          <details>
+            <summary>Agent execution trace</summary>
+            <div id="trace-list" class="trace"><div class="empty">Run a query to view its trace.</div></div>
+          </details>
+          <details style="margin-top:16px">
+            <summary>Security guardrail simulator</summary>
+            <p class="subtle" style="font-size:12px">Submit a simulated DELETE intent. The tool layer blocks and logs it; no SQL is issued.</p>
+            <button id="guardrail-button" class="danger" type="button">Test blocked DELETE</button>
+            <div id="guardrail-result" class="feedback" role="status" aria-live="polite"></div>
+          </details>
+        </aside>
+      </div>
+
+      <details style="margin-top:20px">
+        <summary>Relational schema inspector</summary>
+        <p class="subtle" style="font-size:12px">Live column metadata for the supply and purchase-order tables.</p>
+        <div id="schema-list" class="approval-list"><div class="empty">Loading schema…</div></div>
+      </details>
+
+      <details>
+        <summary>Embed this dashboard in another page</summary>
+        <p class="subtle" style="font-size:12px">Use the deployed URL in the iframe. A localhost URL is only visible on your machine.</p>
+        <pre id="embed-snippet"></pre>
+        <button id="copy-embed" class="secondary" type="button">Copy embed code</button>
+      </details>
+      <footer class="footer">Drafts are not sent to vendors. Approval records an explicit decision only.</footer>
+    </main>
+
+    <script>
+      "use strict";
+      const $ = (selector) => document.querySelector(selector);
+      const api = async (path, options = {}) => {
+        const response = await fetch(path, {
+          ...options,
+          headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const error = payload.error || {};
+          throw new Error(error.message || `Request failed (${response.status})`);
+        }
+        return payload;
+      };
+      const setFeedback = (message, isError = false) => {
+        const feedback = $("#feedback");
+        feedback.textContent = message;
+        feedback.classList.toggle("error", isError);
+      };
+      const setAssistantAnswer = (message) => {
+        $("#assistant-answer-text").textContent = message;
+      };
+      const setStages = (active = -1, completed = -1, approval = false) => {
+        document.querySelectorAll(".stage").forEach((stage, index) => {
+          stage.classList.remove("active", "complete", "alert");
+          if (index <= completed) stage.classList.add("complete");
+          if (index === active) stage.classList.add(approval ? "alert" : "active");
+        });
+      };
+      const displayCurrency = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
+      const cell = (row, value, className = "") => {
+        const td = document.createElement("td");
+        td.textContent = value === null || value === undefined ? "—" : String(value);
+        if (className) td.className = className;
+        row.append(td);
+      };
+      let currentThread = sessionStorage.getItem("inventory-thread") || null;
+      let resultRecords = [];
+      let resultKind = "inventory";
+      let sortState = { key: "product_name", ascending: true };
+      const inventoryColumns = [
+        { label: "Supply", key: "product_name", value: (item) => `${item.product_name} (${item.sku})` },
+        { label: "Category", key: "category", value: (item) => item.category },
+        { label: "Clinic", key: "clinic_name", value: (item) => `${item.clinic_name || item.clinic_id} · ${item.city || ""}` },
+        { label: "Stock / reorder", key: "stock_level", value: (item) => `${item.stock_level} / ${item.reorder_point}` },
+        { label: "Vendor", key: "supplier_name", value: (item) => item.supplier_name },
+        { label: "Lead", key: "lead_time_days", value: (item) => `${item.lead_time_days} days` },
+        { label: "MOQ", key: "minimum_order_quantity", value: (item) => item.minimum_order_quantity },
+        { label: "Unit cost", key: "unit_cost_cents", value: (item) => displayCurrency(item.unit_cost_cents) }
+      ];
+      const orderColumns = [
+        { label: "Purchase order", key: "order_id", value: (order) => order.order_id },
+        { label: "Status", key: "status", value: (order) => order.status },
+        { label: "Clinic", key: "clinic_name", value: (order) => `${order.clinic_name || order.clinic_id} · ${order.clinic_id || ""}` },
+        { label: "Vendor", key: "vendor_name", value: (order) => order.vendor_name },
+        { label: "Items", key: "items", value: (order) => order.items.map((item) => `${item.product_name} × ${item.quantity}`).join(", ") },
+        { label: "Total", key: "total_cost_cents", value: (order) => displayCurrency(order.total_cost_cents) },
+        { label: "Order date", key: "created_at", value: (order) => order.created_at }
+      ];
+      const vendorColumns = [
+        { label: "Vendor", key: "vendor_name", value: (vendor) => vendor.vendor_name },
+        { label: "Rating", key: "rating", value: (vendor) => `${Number(vendor.rating).toFixed(1)} / 5` },
+        { label: "Support", key: "support_contact", value: (vendor) => vendor.support_contact },
+        { label: "Lead time", key: "lead_time_days", value: (vendor) => `${vendor.lead_time_days} days` },
+        { label: "Minimum order quantity", key: "minimum_order_quantity", value: (vendor) => vendor.minimum_order_quantity }
+      ];
+
+      function renderTable() {
+        const tbody = $("#inventory-rows");
+        tbody.replaceChildren();
+        const columns = resultKind === "orders"
+          ? orderColumns
+          : resultKind === "vendors"
+            ? vendorColumns
+            : inventoryColumns;
+        const header = $("#inventory-head");
+        header.replaceChildren();
+        for (const column of columns) {
+          const th = document.createElement("th");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "sort-button";
+          button.textContent = `${column.label}${sortState.key === column.key ? (sortState.ascending ? " ↑" : " ↓") : ""}`;
+          button.setAttribute("aria-label", `Sort by ${column.label}`);
+          button.addEventListener("click", () => {
+            sortState = {
+              key: column.key,
+              ascending: sortState.key === column.key ? !sortState.ascending : true
+            };
+            renderTable();
+          });
+          th.append(button);
+          header.append(th);
+        }
+        const sorted = [...resultRecords].sort((left, right) => {
+          const a = left[sortState.key];
+          const b = right[sortState.key];
+          const comparison = typeof a === "number" && typeof b === "number"
+            ? a - b
+            : String(a ?? "").localeCompare(String(b ?? ""));
+          return sortState.ascending ? comparison : -comparison;
+        });
+        for (const record of sorted) {
+          const tr = document.createElement("tr");
+          for (const column of columns) {
+            const isLowStock = resultKind === "inventory" &&
+              column.key === "stock_level" && record.stock_level <= record.reorder_point;
+            cell(tr, column.value(record), isLowStock ? "stock-low" : "");
+          }
+          tbody.append(tr);
+        }
+      }
+
+      function renderInventory(records) {
+        resultKind = "inventory";
+        resultRecords = Array.isArray(records) ? records : [];
+        sortState = { key: "product_name", ascending: true };
+        const clinicCount = new Set(resultRecords.map((item) => item.clinic_id)).size;
+        const lowStock = resultRecords.filter((item) => item.stock_level <= item.reorder_point).length;
+        $("#executive-summary").textContent = resultRecords.length
+          ? `${resultRecords.length} supply item${resultRecords.length === 1 ? "" : "s"} across ${clinicCount} clinic${clinicCount === 1 ? "" : "s"}; ${lowStock} at or below reorder point.`
+          : "No inventory records matched this query.";
+        renderTable();
+        renderChart(resultRecords, (item) => item.clinic_name || item.clinic_id || "Unassigned",
+          (item) => item.stock_level <= item.reorder_point);
+      }
+
+      function renderOrders(records) {
+        resultKind = "orders";
+        resultRecords = Array.isArray(records) ? records : [];
+        sortState = { key: "created_at", ascending: false };
+        const pending = resultRecords.filter((order) => order.status === "pending").length;
+        $("#executive-summary").textContent = resultRecords.length
+          ? `${resultRecords.length} purchase order${resultRecords.length === 1 ? "" : "s"} found; ${pending} pending explicit approval.`
+          : "No purchase orders matched this query.";
+        renderTable();
+        renderChart(resultRecords, (order) => order.vendor_name || "Unknown vendor",
+          (order) => order.status === "pending");
+      }
+
+      function renderVendors(records) {
+        resultKind = "vendors";
+        resultRecords = Array.isArray(records) ? records : [];
+        sortState = { key: "vendor_name", ascending: true };
+        $("#executive-summary").textContent = resultRecords.length
+          ? `${resultRecords.length} supplier${resultRecords.length === 1 ? "" : "s"} with lead times and minimum order quantities.`
+          : "No supplier records matched this query.";
+        renderTable();
+        renderChart(resultRecords, (vendor) => vendor.vendor_name || "Unknown vendor",
+          (vendor) => Number(vendor.rating) < 4.5);
+      }
+
+      function renderChart(records, groupBy, isHighlighted) {
+        const chart = $("#inventory-chart");
+        chart.replaceChildren();
+        if (!records.length) {
+          const empty = document.createElement("span");
+          empty.className = "empty";
+          empty.textContent = "No records to chart.";
+          chart.append(empty);
+          return;
+        }
+        const counts = new Map();
+        for (const record of records) {
+          const key = groupBy(record);
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+        const maximum = Math.max(...counts.values(), 1);
+        for (const [label, count] of counts) {
+          const line = document.createElement("div");
+          line.className = "bar-row";
+          const name = document.createElement("span");
+          name.className = "bar-label";
+          name.textContent = label;
+          const track = document.createElement("span");
+          track.className = "bar-track";
+          const fill = document.createElement("span");
+          fill.className = "bar-fill";
+          fill.style.display = "block";
+          fill.style.width = `${Math.max(4, (count / maximum) * 100)}%`;
+          if (records.some((record) => groupBy(record) === label && isHighlighted(record))) {
+            fill.classList.add("low");
+          }
+          track.append(fill);
+          const amount = document.createElement("span");
+          amount.className = "bar-value";
+          amount.textContent = String(count);
+          line.append(name, track, amount);
+          chart.append(line);
+        }
+      }
+
+      function renderTrace(entries) {
+        const trace = $("#trace-list");
+        trace.replaceChildren();
+        if (!entries.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No tool steps were needed.";
+          trace.append(empty);
+          return;
+        }
+        for (const entry of entries.slice(-30)) {
+          const item = document.createElement("div");
+          item.className = "trace-row";
+          const title = document.createElement("strong");
+          const details = entry.details || entry;
+          const duration = details.duration_ms === undefined ? "" : ` · ${details.duration_ms} ms`;
+          const validation = details.argument_validation || (details.valid === true ? "schema valid" : "");
+          title.textContent = `${entry.agent || "agent"} · ${entry.event || entry.tool || entry.action || "step"}${validation ? ` · ${validation}` : ""}${duration}`;
+          const detail = document.createElement("span");
+          detail.textContent = JSON.stringify(details.result ?? details.tool_call ?? details, null, 2);
+          item.append(title, detail);
+          trace.append(item);
+        }
+      }
+
+      function updateStagesFromLogs(entries) {
+        let completed = -1;
+        let active = 0;
+        let awaitingApproval = false;
+        for (const entry of entries) {
+          const event = entry.event;
+          const details = entry.details || {};
+          if (entry.agent === "planner" && event === "step_started") {
+            active = 0;
+            awaitingApproval = false;
+          } else if (entry.agent === "planner" && event === "decision") {
+            completed = 0;
+            active = 1;
+          } else if (entry.agent === "inventory" && event === "tool_call") {
+            completed = 1;
+            active = details.tool === "create_draft_purchase_order" ? 2 : 3;
+          } else if (entry.agent === "approval_guardrail" && event === "approval_requested") {
+            completed = 2;
+            active = 3;
+            awaitingApproval = true;
+          } else if (entry.agent === "approval_guardrail" && event === "approval_decision") {
+            completed = 3;
+            active = -1;
+            awaitingApproval = false;
+          }
+        }
+        setStages(active, completed, awaitingApproval);
+      }
+
+      function updateAgentActivity(entries) {
+        const byAgent = {
+          planner: [],
+          inventory: [],
+          approval_guardrail: [],
+        };
+        for (const entry of entries) {
+          const agent = entry.agent === "tool_guardrail" ? "inventory" : entry.agent;
+          if (byAgent[agent]) byAgent[agent].push(entry);
+        }
+        const latest = (events, name) => [...events].reverse().find((event) => event.event === name);
+        const setCard = (id, status, action, duration, state) => {
+          const card = $(`#agent-${id}`);
+          card.classList.remove("active", "done");
+          if (state) card.classList.add(state);
+          card.querySelector(".agent-status").textContent = status;
+          card.querySelector(".agent-action").textContent = action;
+          card.querySelector(".agent-duration").textContent = duration ? `Elapsed ${duration} ms` : "";
+        };
+
+        const plannerEvents = byAgent.planner;
+        const plannerStart = latest(plannerEvents, "step_started");
+        const plannerDecision = latest(plannerEvents, "decision");
+        const plannerIntent = latest(plannerEvents, "intent_classified");
+        if (plannerDecision) {
+          const plan = plannerDecision.details || {};
+          const toolName = plan.tool_call?.name;
+          const mode = plan.planning_mode === "deterministic_read" ? "Rules-based intent" : "LLM plan";
+          setCard(
+            "planner",
+            "Completed",
+            `${mode}${toolName ? ` · selected ${toolName}` : " · direct response"}`,
+            plan.duration_ms,
+            "done"
+          );
+        } else if (plannerStart) {
+          setCard("planner", "Planning", plannerIntent ? `Classified as ${plannerIntent.details.intent}` : "Choosing a safe, schema-validated action.", "", "active");
+        } else if (plannerEvents.length) {
+          const rejected = latest(plannerEvents, "tool_arguments_rejected");
+          setCard("planner", rejected ? "Blocked" : "Recorded", rejected ? "Invalid tool arguments were rejected before execution." : "Planner trace available.", "", rejected ? "active" : "done");
+        }
+
+        const inventoryEvents = byAgent.inventory;
+        const inventoryStart = latest(inventoryEvents, "step_started");
+        const inventoryDone = latest(inventoryEvents, "tool_call");
+        const validation = latest(inventoryEvents, "tool_arguments_validated");
+        const blocked = latest(inventoryEvents, "destructive_operation_blocked");
+        if (inventoryDone) {
+          const details = inventoryDone.details || {};
+          setCard(
+            "inventory",
+            "Completed",
+            `${details.tool} · arguments ${details.argument_validation || "validated"}`,
+            details.duration_ms,
+            "done"
+          );
+        } else if (blocked) {
+          setCard("inventory", "Blocked safely", `${blocked.details.operation} on ${blocked.details.table} was denied; nothing changed.`, "", "done");
+        } else if (inventoryStart) {
+          const tool = inventoryStart.details?.tool || "selected tool";
+          setCard("inventory", validation ? "Arguments validated" : "Executing", `${tool} · running deterministic database operation.`, "", "active");
+        } else if (inventoryEvents.length) {
+          setCard("inventory", "Guardrail active", "Tool arguments were checked before the operation.", "", "done");
+        }
+
+        const guardEvents = byAgent.approval_guardrail;
+        const guardStart = latest(guardEvents, "step_started");
+        const pending = latest(guardEvents, "approval_requested");
+        const decision = latest(guardEvents, "approval_decision");
+        const autoApproved = latest(guardEvents, "auto_approved");
+        if (decision) {
+          setCard("approval_guardrail", decision.details.decision === "YES" ? "Approved" : "Rejected", `Human decision recorded for ${decision.details.order_id}.`, decision.details.duration_ms, "done");
+        } else if (pending) {
+          setCard("approval_guardrail", "Awaiting YES / NO", `Purchase order ${pending.details.order_id} is paused for human approval.`, pending.details.duration_ms, "active");
+        } else if (autoApproved) {
+          setCard("approval_guardrail", "Auto-approved", `Order is within the configured threshold (${displayCurrency(Math.round((autoApproved.details.total || 0) * 100))}).`, autoApproved.details.duration_ms, "done");
+        } else if (guardStart) {
+          setCard("approval_guardrail", "Checking threshold", `Evaluating draft ${guardStart.details.order_id}.`, "", "active");
+        } else if (guardEvents.length) {
+          setCard("approval_guardrail", "Recorded", "Guardrail event logged.", "", "done");
+        }
+      }
+
+      async function loadSchema() {
+        const schemas = await api("/api/schema");
+        const list = $("#schema-list");
+        list.replaceChildren();
+        for (const table of schemas) {
+          const card = document.createElement("div");
+          card.className = "approval";
+          const name = document.createElement("div");
+          name.className = "approval-title";
+          name.textContent = `${table.name} · ${table.type}`;
+          const columns = document.createElement("div");
+          columns.className = "approval-meta";
+          columns.textContent = table.columns.map((column) =>
+            `${column.name}: ${column.type || "TEXT"}${column.primary_key ? " · PK" : ""}${column.not_null ? " · required" : ""}`
+          ).join("  |  ");
+          card.append(name, columns);
+          list.append(card);
+        }
+      }
+
+      async function loadApprovals() {
+        const approvals = await api("/api/approvals");
+        const list = $("#approval-list");
+        const count = $("#approval-count");
+        list.replaceChildren();
+        count.textContent = String(approvals.length);
+        count.setAttribute(
+          "aria-label",
+          `${approvals.length} pending approval${approvals.length === 1 ? "" : "s"}`
+        );
+        count.classList.toggle("clear", approvals.length === 0);
+        if (!approvals.length) {
+          const empty = document.createElement("div");
+          empty.className = "approval-empty";
+          const icon = document.createElement("div");
+          icon.className = "approval-empty-icon";
+          icon.setAttribute("aria-hidden", "true");
+          icon.textContent = "✓";
+          const title = document.createElement("div");
+          title.className = "approval-empty-title";
+          title.textContent = "You're all caught up";
+          const copy = document.createElement("div");
+          copy.className = "approval-empty-copy";
+          copy.textContent = "New purchase-order drafts will appear here when they need your decision.";
+          empty.append(icon, title, copy);
+          list.append(empty);
+          return;
+        }
+        for (const order of approvals) {
+          const card = document.createElement("div");
+          card.className = "approval-card";
+          const header = document.createElement("div");
+          header.className = "approval-card-head";
+          const identity = document.createElement("div");
+          const title = document.createElement("div");
+          title.className = "approval-item";
+          title.textContent = order.items_summary || "Purchase order draft";
+          const orderId = document.createElement("div");
+          orderId.className = "approval-id";
+          orderId.textContent = order.order_id;
+          identity.append(title, orderId);
+          const state = document.createElement("span");
+          state.className = "approval-state";
+          state.textContent = "Needs decision";
+          header.append(identity, state);
+
+          const total = document.createElement("div");
+          total.className = "approval-total";
+          total.textContent = displayCurrency(order.total_cost_cents);
+
+          const details = document.createElement("div");
+          details.className = "approval-details";
+          const addDetail = (labelText, valueText) => {
+            const detail = document.createElement("div");
+            const label = document.createElement("div");
+            label.className = "approval-detail-label";
+            label.textContent = labelText;
+            const value = document.createElement("div");
+            value.className = "approval-detail-value";
+            value.textContent = valueText || "Not available";
+            detail.append(label, value);
+            details.append(detail);
+          };
+          addDetail("Clinic", order.clinic_name || order.clinic_id);
+          addDetail("Supplier", order.supplier_name);
+          const createdAt = new Date(order.created_at);
+          addDetail(
+            "Requested",
+            Number.isNaN(createdAt.getTime())
+              ? "Date unavailable"
+              : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(createdAt)
+          );
+
+          const actions = document.createElement("div");
+          actions.className = "approval-actions";
+          const actionStatus = document.createElement("div");
+          actionStatus.className = "approval-action-status";
+          actionStatus.setAttribute("role", "status");
+          actionStatus.setAttribute("aria-live", "polite");
+          const actionButtons = [];
+          for (const { decision, label, className } of [
+            { decision: "YES", label: "Approve order · YES", className: "approval-approve" },
+            { decision: "NO", label: "Reject order · NO", className: "approval-reject" },
+          ]) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = className;
+            button.textContent = label;
+            button.dataset.defaultLabel = label;
+            button.addEventListener("click", async () => {
+              actionButtons.forEach((actionButton) => {
+                actionButton.disabled = true;
+                if (actionButton === button) actionButton.textContent = "Saving decision…";
+              });
+              card.classList.add("processing");
+              actionStatus.textContent = `Recording your ${decision} decision…`;
+              try {
+                await api(`/api/approvals/${encodeURIComponent(order.order_id)}`, {
+                  method: "POST",
+                  body: JSON.stringify({ decision, thread_id: order.thread_id })
+                });
+                const logs = await api(`/api/logs?thread_id=${encodeURIComponent(order.thread_id)}`);
+                updateAgentActivity(logs);
+                renderTrace(logs);
+                const decisionText = decision === "YES"
+                  ? `Purchase order ${order.order_id} was approved. The decision is recorded; no order was sent to the supplier.`
+                  : `Purchase order ${order.order_id} was rejected. The decision is recorded; no order was sent to the supplier.`;
+                setAssistantAnswer(decisionText);
+                setFeedback(decisionText);
+                await loadApprovals();
+                await loadInventory();
+              } catch (error) {
+                card.classList.remove("processing");
+                actionStatus.textContent = `We couldn't save that decision. ${error.message}`;
+                actionButtons.forEach((actionButton) => {
+                  actionButton.disabled = false;
+                  actionButton.textContent = actionButton.dataset.defaultLabel;
+                });
+                setFeedback(error.message, true);
+              }
+            });
+            actionButtons.push(button);
+            actions.append(button);
+          }
+          card.append(header, total, details, actions, actionStatus);
+          list.append(card);
+        }
+      }
+
+      async function loadInventory() {
+        renderInventory(await api("/api/inventory"));
+      }
+
+      async function loadRecentAgentActivity() {
+        const logs = await api("/api/logs");
+        const chronological = logs.slice().reverse();
+        updateAgentActivity(chronological);
+      }
+
+      async function runQuery(text) {
+        if (!text.trim()) return;
+        $("#query-button").disabled = true;
+        $("#status-message").textContent = "Planner is reviewing the request.";
+        setStages(0);
+        setAssistantAnswer("I'm checking the request and gathering the matching inventory or supplier records.");
+        setFeedback("Running validated inventory tools…");
+        currentThread = currentThread || `ui-${crypto.randomUUID()}`;
+        sessionStorage.setItem("inventory-thread", currentThread);
+        const queryThread = currentThread;
+        let lastLogId = 0;
+        try {
+          const previousLogs = await api(`/api/logs?thread_id=${encodeURIComponent(queryThread)}`);
+          lastLogId = previousLogs.reduce((max, entry) => Math.max(max, entry.id), 0);
+        } catch (error) {
+          setFeedback(`Could not load previous trace: ${error.message}`, true);
+        }
+        let pollInProgress = false;
+        const traceTimer = setInterval(async () => {
+          if (pollInProgress) return;
+          pollInProgress = true;
+          try {
+            const logs = await api(`/api/logs?thread_id=${encodeURIComponent(queryThread)}`);
+            const currentLogs = logs.filter((entry) => entry.id > lastLogId);
+            renderTrace(currentLogs);
+            updateStagesFromLogs(currentLogs);
+            updateAgentActivity(currentLogs);
+            if (currentLogs.length) {
+              $("#status-message").textContent = `${currentLogs[currentLogs.length - 1].agent}: ${currentLogs[currentLogs.length - 1].event.replaceAll("_", " ")}.`;
+            }
+          } catch (error) {
+            setFeedback(`Trace polling failed: ${error.message}`, true);
+          } finally {
+            pollInProgress = false;
+          }
+        }, 500);
+        try {
+          const result = await api("/api/query", {
+            method: "POST",
+            body: JSON.stringify({ message: text, thread_id: queryThread })
+          });
+          currentThread = result.thread_id;
+          sessionStorage.setItem("inventory-thread", currentThread);
+          const steps = result.execution_steps || [];
+          const latestToolStep = [...steps].reverse().find((step) => step.agent === "inventory");
+          const resultStep = [...steps].reverse().find((step) => Array.isArray(step.result));
+          const orderStep = [...steps].reverse().find((step) => step.tool === "create_draft_purchase_order");
+          if (latestToolStep?.tool === "query_purchase_orders") renderOrders(latestToolStep.result);
+          else if (latestToolStep?.tool === "query_inventory") renderInventory(latestToolStep.result);
+          else if (latestToolStep?.tool === "query_vendors") renderVendors(latestToolStep.result);
+          else if (latestToolStep?.tool === "create_draft_purchase_order" && orderStep) {
+            const order = orderStep.result;
+            $("#executive-summary").textContent = `Draft ${order.order_id}: ${order.quantity} units of ${order.product_name} for ${order.clinic_name}, from ${order.supplier_name}; total ${displayCurrency(order.total_cost_cents)}.`;
+          } else if (resultStep) {
+            if (resultStep.tool === "query_purchase_orders") renderOrders(resultStep.result);
+            else if (resultStep.tool === "query_vendors") renderVendors(resultStep.result);
+            else renderInventory(resultStep.result);
+          } else {
+            $("#executive-summary").textContent = result.response || "The planner completed without inventory records.";
+          }
+          const finalLogs = await api(`/api/logs?thread_id=${encodeURIComponent(queryThread)}`);
+          const currentLogs = finalLogs.filter((entry) => entry.id > lastLogId);
+          renderTrace(currentLogs.length ? currentLogs : steps);
+          updateAgentActivity(currentLogs);
+          sessionStorage.setItem("inventory-last-log-id", String(finalLogs.reduce((max, entry) => Math.max(max, entry.id), lastLogId)));
+          if (result.pending_approval) {
+            setStages(3, 2, true);
+            $("#status-message").textContent = `Approval pending for ${result.pending_approval.order_id}; no supplier order was sent.`;
+            setFeedback("A draft was created through the validated tool and requires explicit approval.");
+          } else {
+            setStages(-1, 3);
+            $("#status-message").textContent = orderStep ? "Draft is verified; no supplier order was transmitted." : "Inventory query completed using validated tools.";
+            setFeedback("Query complete. See the response and matching records below.");
+          }
+          setAssistantAnswer(result.response || "The request completed, but there is no additional response text.");
+          await loadApprovals();
+        } catch (error) {
+          setStages(0);
+          $("#status-message").textContent = "Request could not be completed.";
+          setAssistantAnswer(`I couldn't complete that request: ${error.message}`);
+          setFeedback(error.message.includes("quota")
+            ? `Gemini quota: ${error.message}`
+            : error.message, true);
+        } finally {
+          clearInterval(traceTimer);
+          $("#query-button").disabled = false;
+        }
+      }
+
+      $("#query-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        runQuery($("#query-input").value);
+      });
+      document.querySelectorAll("[data-query]").forEach((button) => {
+        button.addEventListener("click", () => {
+          $("#query-input").value = button.dataset.query;
+          runQuery(button.dataset.query);
+        });
+      });
+      $("#refresh-button").addEventListener("click", async () => {
+        try {
+          await Promise.all([loadInventory(), loadApprovals()]);
+          setFeedback("Inventory and approvals refreshed.");
+        } catch (error) {
+          setFeedback(error.message, true);
+        }
+      });
+      $("#refresh-approvals").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          await loadApprovals();
+          setFeedback("Pending approvals are up to date.");
+        } catch (error) {
+          setFeedback(error.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      $("#guardrail-button").addEventListener("click", async () => {
+        const button = $("#guardrail-button");
+        const attemptThread = `guardrail-${crypto.randomUUID()}`;
+        button.disabled = true;
+        $("#guardrail-result").textContent = "Submitting a simulated DELETE intent to the tool guardrail…";
+        try {
+          const response = await fetch(`/api/security/simulate?thread_id=${encodeURIComponent(attemptThread)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ operation: "DELETE", table: "inventory" })
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.status === 403 && payload.error?.code === "destructive_operation_blocked") {
+            $("#guardrail-result").textContent = "Blocked at the tool layer; no data was changed. The attempt was recorded in agent_logs.";
+            const logs = await api(`/api/logs?thread_id=${encodeURIComponent(attemptThread)}`);
+            renderTrace(logs);
+            updateAgentActivity(logs);
+          } else {
+            throw new Error(payload.error?.message || `Unexpected guardrail response (${response.status})`);
+          }
+        } catch (error) {
+          $("#guardrail-result").textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+      const embedUrl = `${window.location.origin}/embed`;
+      $("#embed-snippet").textContent = `<iframe src="${embedUrl}" title="Clinic Supply Desk" width="100%" height="900" loading="lazy" style="border:0;border-radius:16px"></iframe>`;
+      $("#copy-embed").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText($("#embed-snippet").textContent);
+          setFeedback("Embed code copied.");
+        } catch {
+          setFeedback("Select and copy the embed code above.", true);
+        }
+      });
+      Promise.all([loadInventory(), loadApprovals(), loadSchema(), loadRecentAgentActivity()])
+        .catch((error) => setFeedback(error.message, true));
+    </script>
+  </body>
+</html>
